@@ -2,7 +2,6 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import * as path from "path";
-import TelemetryReporter from "@vscode/extension-telemetry";
 
 import * as languageClient from "vscode-languageclient/node";
 
@@ -28,8 +27,6 @@ const isDebugMode = () => process.env.VSCODE_DEBUG_MODE === "true";
 
 const languageServerPath =
     process.env.LANGUAGESERVER_DLL_PATH ?? "out/server/YarnLanguageServer.dll";
-
-let reporter: TelemetryReporter;
 
 let client: LanguageClient;
 let server: ChildProcess;
@@ -60,20 +57,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // package.json data
     let extensionID = `${context.extension.packageJSON.publisher}.${context.extension.packageJSON.name}`;
     let extensionVersion = `${context.extension.packageJSON.version}`;
-    let telemetryKey = context.extension.packageJSON.telemetryKey;
-
-    // Create a new TelemetryReporter, and register it to be disposed when the extension shuts down
-    reporter = new TelemetryReporter(
-        extensionID,
-        extensionVersion,
-        telemetryKey,
-    );
-    context.subscriptions.push(reporter);
-
-    // Notify that we've started the session!
-    reporter.sendTelemetryEvent("sessionStart", {
-        languageServerStatus: enableLanguageServer ? "enabled" : "disabled",
-    });
 
     const outputChannel = vscode.window.createOutputChannel("Yarn Spinner");
 
@@ -147,7 +130,6 @@ async function launchLanguageServer(
 
             const dotnetPath = dotnetAcquisition?.dotnetPath ?? null;
             if (!dotnetPath) {
-                reporter.sendTelemetryErrorEvent("cantAcquireDotNet");
                 throw new Error(
                     "Can't load the language server: Failed to acquire .NET!",
                 );
@@ -158,12 +140,6 @@ async function launchLanguageServer(
             );
 
             if (fs.existsSync(absoluteLanguageServerPath) == false) {
-                reporter.sendTelemetryErrorEvent(
-                    "missingLanguageServer",
-                    { path: languageServerPath },
-                    {},
-                    ["path"],
-                );
                 throw new Error(
                     `Failed to launch language server: no file exists at ${languageServerPath}`,
                 );
@@ -196,7 +172,6 @@ async function launchLanguageServer(
 
     let languageClientOptions: languageClient.LanguageClientOptions = {
         initializationFailedHandler: (error) => {
-            reporter.sendTelemetryErrorEvent("initializationFailed", error);
             // Do not attempt to reinitalise the server (we could cause an
             // infinite loop if we did.)
             vscode.window.showErrorMessage(
@@ -206,12 +181,10 @@ async function launchLanguageServer(
         },
         errorHandler: {
             error(error, message, count) {
-                reporter.sendTelemetryException(error);
                 vscode.window.showErrorMessage("Language server error");
                 return { action: languageClient.ErrorAction.Continue };
             },
             closed: () => {
-                reporter.sendTelemetryErrorEvent("serverConnectionClosed");
                 if (isDebugMode()) {
                     return { action: languageClient.CloseAction.DoNotRestart };
                 } else {
@@ -263,7 +236,6 @@ async function launchLanguageServer(
         error: any,
         defaultValue: T,
     ): T {
-        reporter.sendTelemetryException(error, { method: type.method });
         vscode.window.showErrorMessage("LSP Error: " + error);
         return defaultHandleFailedRequest(type, token, error, defaultValue);
     }
@@ -274,13 +246,6 @@ async function launchLanguageServer(
     client.setTrace(Trace.Verbose);
 
     await client.start().catch((error) => {
-        reporter.sendTelemetryErrorEvent(
-            "failedLaunchingLanguageServer",
-            { serverError: error },
-            {},
-            ["serverError"],
-        );
-
         outputChannel.appendLine(
             "Failed to launch the language server! " + JSON.stringify(error),
         );

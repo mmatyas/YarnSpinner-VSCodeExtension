@@ -34,7 +34,6 @@
     "categories": [
         "Programming Languages"
     ],
-    "telemetryKey": "6fafead2-0494-4fc6-a960-90ef5ef8e5c6",
     "scripts": {
         "vscode:prepublish": "npm run buildProduction",
         "buildExtension": "tsc -p ./src/tsconfig.json && cp src/runner.html out/",
@@ -295,7 +294,6 @@
     },
     "dependencies": {
         "@vscode/codicons": "^0.0.22",
-        "@vscode/extension-telemetry": "^0.5.2",
         "@vscode/webview-ui-toolkit": "^0.8.4",
         "antlr4ts": "^0.5.0-alpha.4",
         "curved-arrows": "git+https://github.com/desplesda/curved-arrows.git#fa1edc2ad372c7b9ec668af7f0506702129a5ced",
